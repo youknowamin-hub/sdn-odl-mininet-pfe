@@ -451,7 +451,7 @@ Migrate from emulated (Mininet) to physical **OpenFlow-capable switches** (e.g.,
 | Role | Name |
 |---|---|
 | **Developer & Researcher** | [Abderrahmane Aroussi](https://abderrahmane-aroussi.me) — [@Abderrahmane-Aroussi](https://github.com/Abderrahmane-Aroussi) |
-| **Developer & Researcher** | Amin Mriroud |
+| **Developer & Researcher** | [Amin Mriroud](https://github.com/youknowamin-hub) |
 | **Project Supervisor** | Pr. Tarek AIT BAHA — École Supérieure de Technologie de Guelmim |
 | **Jury Member** | Pr. Amine Bouaouda — ESTG |
 
