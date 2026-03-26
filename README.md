@@ -464,8 +464,9 @@ Migrate from emulated (Mininet) to physical **OpenFlow-capable switches** (e.g.,
 
 **Special Thanks:**  
 We extend particular gratitude to **Pr. Amine Bouaouda** for his course on Virtualization and Cloud Computing, which provided the essential foundation in Docker containerization applied throughout this project.
+|
 We also thank **Pr. Tarek AIT BAHA** for suggesting this advanced topic and for his guidance in navigating an emerging technology absent from our curriculum.
-
+|
 ---
 
 <div align="center">
