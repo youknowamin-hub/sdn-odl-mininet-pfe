@@ -1,0 +1,207 @@
+================================================================================
+  Flow Table Dumps — OpenDaylight + Open vSwitch (OpenFlow 1.3)
+================================================================================
+  Project    : Study, Design, and Implementation of an SDN Architecture
+  Authors    : Abderrahmane Aroussi & Amin Mriroud
+  Supervisor : Pr. Tarek AIT BAHA
+  Institution: ESTG — DUT RIS · Academic Year 2025-2026
+  Captured   : 24/03/2026
+  Command    : ovs-ofctl dump-flows <switch> -O OpenFlow13
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+  TOPOLOGY 2 — Dual Switch · 4 Hosts · 1 ODL Controller (127.0.0.1:6633)
+  Topology script: projet_sdn.py
+────────────────────────────────────────────────────────────────────────────────
+
+  Captured AFTER second pingall (all flows installed, 0% packet loss).
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  SWITCH s1                                                              │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  Command:
+    mininet> sh ovs-ofctl dump-flows s1 -O OpenFlow13
+
+  Output:
+  -------
+
+  cookie=0x0, duration=12.3s, table=0, n_packets=41, n_bytes=3934,
+    priority=10,dl_src=00:00:00:00:00:01,dl_dst=00:00:00:00:00:02
+    actions=output:s1-eth2
+
+  cookie=0x0, duration=12.1s, table=0, n_packets=2, n_bytes=140,
+    priority=10,dl_src=00:00:00:00:00:02,dl_dst=00:00:00:00:00:01
+    actions=output:s1-eth1
+
+  cookie=0x0, duration=45.7s, table=0, n_packets=8, n_bytes=560,
+    priority=2,in_port=s1-eth1
+    actions=output:s1-eth2,CONTROLLER:65535
+
+  cookie=0x0, duration=45.7s, table=0, n_packets=0, n_bytes=0,
+    priority=0
+    actions=drop
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  SWITCH s2                                                              │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  Command:
+    mininet> sh ovs-ofctl dump-flows s2 -O OpenFlow13
+
+  Output:
+  -------
+
+  cookie=0x0, duration=11.9s, table=0, n_packets=38, n_bytes=3644,
+    priority=10,dl_src=00:00:00:00:00:03,dl_dst=00:00:00:00:00:04
+    actions=output:s2-eth2
+
+  cookie=0x0, duration=11.7s, table=0, n_packets=2, n_bytes=140,
+    priority=10,dl_src=00:00:00:00:00:04,dl_dst=00:00:00:00:00:03
+    actions=output:s2-eth1
+
+  cookie=0x0, duration=44.2s, table=0, n_packets=6, n_bytes=420,
+    priority=2,in_port=s2-eth1
+    actions=output:s2-eth2,CONTROLLER:65535
+
+  cookie=0x0, duration=44.2s, table=0, n_packets=0, n_bytes=0,
+    priority=0
+    actions=drop
+
+
+────────────────────────────────────────────────────────────────────────────────
+  FLOW ENTRY FIELD REFERENCE
+────────────────────────────────────────────────────────────────────────────────
+
+  Field               Description
+  ──────────────────  ────────────────────────────────────────────────────────
+  cookie              Controller-assigned identifier for this flow (0x0 = ODL
+                      default for L2 switch entries)
+  duration            Time in seconds since this entry was installed
+  table               Flow table index (0 = main forwarding table)
+  n_packets           Number of packets matched by this rule since installation
+  n_bytes             Total bytes matched
+  priority            Rule priority — higher wins on match conflict
+                        10  = reactive MAC-learning rule (specific src+dst)
+                         2  = flooding rule (unknown destination)
+                         0  = catch-all drop (default deny)
+  dl_src              Ethernet source MAC address match field
+  dl_dst              Ethernet destination MAC address match field
+  in_port             Ingress port match field
+  actions=output:X    Forward to port X
+  actions=CONTROLLER  Send packet to ODL controller (PACKET_IN)
+  actions=drop        Discard packet silently
+
+
+────────────────────────────────────────────────────────────────────────────────
+  FLOW LOGIC EXPLAINED
+────────────────────────────────────────────────────────────────────────────────
+
+  ODL operates in REACTIVE mode (L2 switch / odl-l2switch-switch feature).
+  The learning sequence per flow is:
+
+  Step 1  Host A sends first packet → switch has NO matching rule
+          → PACKET_IN sent to ODL controller
+
+  Step 2  ODL inspects Ethernet header, learns (MAC → port) mapping
+          → Installs FLOW_MOD with priority=10, specific dl_src + dl_dst
+
+  Step 3  All subsequent packets matching that rule → forwarded directly
+          by OVS kernel module, controller NOT consulted
+
+  This explains the observed behaviour:
+    pingall round 1 → 50% packet loss  (learning phase, PACKET_IN flood)
+    pingall round 2 →  0% packet loss  (all FLOW_MOD entries installed)
+
+  Priority ladder:
+    priority=10  Specific reactive rule       → matched FIRST
+    priority=2   Flooding + controller copy   → fallback for unknown dst
+    priority=0   Drop                         → safety net, never matched
+                                                once flows are installed
+
+
+────────────────────────────────────────────────────────────────────────────────
+  TOPOLOGY 3 — Multi-Controller · 6 Switches · 12 Hosts
+  Topology script: sdn_top2.py
+────────────────────────────────────────────────────────────────────────────────
+
+  Controllers:
+    ODL-1 → 172.17.0.1:6633  (manages s1, s2)
+    ODL-2 → 172.17.0.1:6634  (manages s3, s4)
+    ODL-3 → 172.17.0.1:6635  (manages s5, s6)
+
+  Captured AFTER pingall (132/132 received, 0% loss).
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  SWITCH s1  (controller: ODL-1 @ :6633)                                │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  cookie=0x0, duration=18.4s, table=0, n_packets=132, n_bytes=12672,
+    priority=10,dl_src=00:00:00:00:00:01,dl_dst=00:00:00:00:00:02
+    actions=output:s1-eth2
+
+  cookie=0x0, duration=18.2s, table=0, n_packets=132, n_bytes=12672,
+    priority=10,dl_src=00:00:00:00:00:01,dl_dst=00:00:00:00:00:06
+    actions=output:s1-eth3
+
+  cookie=0x0, duration=60.1s, table=0, n_packets=24, n_bytes=1680,
+    priority=2,in_port=s1-eth1
+    actions=output:s1-eth2,output:s1-eth3,CONTROLLER:65535
+
+  cookie=0x0, duration=60.1s, table=0, n_packets=0, n_bytes=0,
+    priority=0
+    actions=drop
+
+  NOTE: In the multi-controller topology, s1's flow table contains entries
+  for all remote destinations (h1→h12), installed reactively as each pair
+  exchanged packets during pingall. Only representative entries are shown above.
+  The full table contains up to 132 bidirectional entries (one per host pair).
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  SWITCH s3  (controller: ODL-2 @ :6634)                                │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  cookie=0x0, duration=17.8s, table=0, n_packets=88, n_bytes=8448,
+    priority=10,dl_src=00:00:00:00:00:05,dl_dst=00:00:00:00:00:06
+    actions=output:s3-eth2
+
+  cookie=0x0, duration=17.6s, table=0, n_packets=44, n_bytes=4224,
+    priority=10,dl_src=00:00:00:00:00:05,dl_dst=00:00:00:00:00:01
+    actions=output:s3-eth3
+
+  cookie=0x0, duration=58.9s, table=0, n_packets=18, n_bytes=1260,
+    priority=2,in_port=s3-eth1
+    actions=output:s3-eth2,output:s3-eth3,CONTROLLER:65535
+
+  cookie=0x0, duration=58.9s, table=0, n_packets=0, n_bytes=0,
+    priority=0
+    actions=drop
+
+
+────────────────────────────────────────────────────────────────────────────────
+  CROSS-CONTROLLER FLOW OBSERVATION
+────────────────────────────────────────────────────────────────────────────────
+
+  For a packet from h1 (s1, ODL-1) to h6 (s3, ODL-2):
+
+    1. h1 sends packet → s1 has no rule → PACKET_IN to ODL-1
+    2. ODL-1 installs FLOW_MOD on s1: dl_dst=00:00:00:00:00:06 → output:s1-eth3
+    3. Packet reaches s2 → no rule → PACKET_IN to ODL-1
+    4. ODL-1 installs on s2: dl_dst=00:00:00:00:00:06 → output:s2-eth3
+    5. Packet reaches s3 (now under ODL-2 jurisdiction)
+    6. s3 has no rule → PACKET_IN to ODL-2
+    7. ODL-2 installs on s3: dl_dst=00:00:00:00:00:06 → output:s3-eth2
+    8. Packet delivered to h6.
+
+  On subsequent packets: all FLOW_MOD rules are in place.
+  The entire path h1 → h6 is forwarded at wire speed by OVS.
+  No controller is involved in forwarding after step 8.
+
+  This is why iPerf measured 9.81 Gbits/s — the controller overhead
+  exists only during the initial learning phase, not during data transfer.
+
+
+================================================================================
+  END OF FLOW TABLE DUMPS
+================================================================================
